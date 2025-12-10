@@ -22,7 +22,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        kotlinCompilerExtensionVersion = "1.6.11"
     }
 
     compileOptions {
@@ -46,14 +46,25 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation(platform("androidx.compose:compose-bom:2024.10.00"))
 
+    // ✅ БРАВИМ ПРОБЛЕМА — ИЗПОЛЗВАМЕ САМО ЕДНА ВЕРСИЯ НА NAVIGATION
+    implementation("androidx.navigation:navigation-compose:2.6.0")
+
+    // И задължаваме Gradle да използва 2.6.0 навсякъде
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.navigation:navigation-compose:2.6.0")
+        }
+    }
 
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
     // Room + KSP
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 }
+

@@ -1,54 +1,53 @@
 package com.atanasnanov.personallibrary
 
-import com.atanasnanov.personallibrary.ui.edit.AddBookScreen
-import androidx.compose.runtime.collectAsState
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.atanasnanov.personallibrary.data.local.AppDatabase
 import com.atanasnanov.personallibrary.data.repository.BookRepository
 import com.atanasnanov.personallibrary.ui.booklist.BookListScreen
+import com.atanasnanov.personallibrary.ui.details.BookDetailsScreen
+import com.atanasnanov.personallibrary.ui.edit.AddBookScreen
+import com.atanasnanov.personallibrary.ui.edit.EditBookScreen
 import com.atanasnanov.personallibrary.ui.theme.PersonalLibraryTheme
 import com.atanasnanov.personallibrary.viewmodel.BookViewModel
 import com.atanasnanov.personallibrary.viewmodel.BookViewModelFactory
 
 class MainActivity : ComponentActivity() {
-
-    lateinit var viewModel: BookViewModel
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize Room + Repository + ViewModel
-        val database = AppDatabase.getDatabase(this)
-        val repository = BookRepository(database.bookDao())
-
-        viewModel = ViewModelProvider(
-            this,
-            BookViewModelFactory(repository)
-        )[BookViewModel::class.java]
-
         setContent {
             PersonalLibraryTheme {
-                LibraryApp(viewModel)
+                LibraryApp()
             }
         }
     }
 }
 
 @Composable
-fun LibraryApp(viewModel: BookViewModel) {
+fun LibraryApp() {
     val navController = rememberNavController()
-    val books = viewModel.books.collectAsState()
+    val context = LocalContext.current
+
+    val database = AppDatabase.getDatabase(context)
+    val repository = BookRepository(database.bookDao())
+
+    val viewModel: BookViewModel = viewModel(
+        factory = BookViewModelFactory(repository)
+    )
+
+    val books = viewModel.books.collectAsState(initial = emptyList())
 
     NavHost(
         navController = navController,
@@ -57,11 +56,11 @@ fun LibraryApp(viewModel: BookViewModel) {
         composable("list") {
             BookListScreen(
                 books = books.value,
-                onAddBook = {
-                    navController.navigate("add")
-                },
-                onScanBook = { /* scanner later */ },
-                onBookClick = { /* details later */ }
+                onAddBook = { navController.navigate("add") },
+                onScanBook = {},
+                onBookClick = { book ->
+                    navController.navigate("details/${book.id}")
+                }
             )
         }
 
@@ -71,10 +70,41 @@ fun LibraryApp(viewModel: BookViewModel) {
                     viewModel.addBook(book)
                     navController.popBackStack()
                 },
-                onCancel = {
-                    navController.popBackStack()
-                }
+                onCancel = { navController.popBackStack() }
             )
+        }
+
+        composable("details/{bookId}") { entry ->
+            val id = entry.arguments?.getString("bookId")?.toIntOrNull() ?: -1
+            val book = books.value.firstOrNull { it.id == id }
+
+            if (book != null) {
+                BookDetailsScreen(
+                    book = book,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate("edit/${book.id}") },
+                    onDelete = {
+                        viewModel.deleteBook(book)
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+
+        composable("edit/{bookId}") { entry ->
+            val id = entry.arguments?.getString("bookId")?.toIntOrNull() ?: -1
+            val book = books.value.firstOrNull { it.id == id }
+
+            if (book != null) {
+                EditBookScreen(
+                    book = book,
+                    onSave = { updated ->
+                        viewModel.updateBook(updated)
+                        navController.popBackStack()
+                    },
+                    onCancel = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

@@ -1,20 +1,19 @@
 package com.atanasnanov.personallibrary.data.local
 
 import androidx.room.*
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BookDao {
 
-    @Query("SELECT * FROM books ORDER BY title ASC")
-    fun getBooks(): Flow<List<Book>>
+    @Query("SELECT * FROM books")
+    fun getAllBooks(): kotlinx.coroutines.flow.Flow<List<Book>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(book: Book)
-
-    @Update
-    suspend fun update(book: Book)
+    suspend fun insertBook(book: Book)
 
     @Delete
-    suspend fun delete(book: Book)
+    suspend fun deleteBook(book: Book)
+
+    @Update
+    suspend fun updateBook(book: Book)   // <--- важно!
 }
